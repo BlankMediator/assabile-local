@@ -4,6 +4,58 @@ Assabile Local is a local web UI, Python server, and CLI for browsing an Assabil
 
 Actual audio, video, and full-size photo files are not bulk-downloaded during sync. They are saved under `data/downloads/` only when requested from the web UI or CLI, and that folder acts as the permanent local media cache.
 
+## Runtime Screenshots
+
+These screenshots were captured from the local runtime at `http://127.0.0.1:8765`.
+
+### Home Catalogue
+
+![Home catalogue with category and media filters](docs/screenshots/home-catalogue.png)
+
+The home page starts with the full local catalogue, section filters, keyword search, country, surah, riwaya, revelation, content, and sort controls.
+
+### Home Search
+
+![Home search results for Ayman](docs/screenshots/home-search-ayman.png)
+
+Search results use the app's native search memory and keep profile actions available, including profile navigation, source opening, selection, and cached image download.
+
+### Profile Media
+
+![Ayman Swed profile with video lessons](docs/screenshots/profile-video-lessons.png)
+
+Profiles show Assabile biography text, profile imagery, tab counts, comments access, same-country browsing, and native album-style rendering for lessons and recordings.
+
+### Al-Massahef Collections
+
+![Abdallah Kamel Al-Massahef collections](docs/screenshots/profile-recitations.png)
+
+Al-Massahef cards link into collection playback/downloads. Empty collections are visibly disabled while populated collections expose ZIP download actions.
+
+### Recitation List
+
+![Recitation list with playback controls](docs/screenshots/profile-recitation-list.png)
+
+Recitation rows include play, add-to-queue, cache/download, source open, sorting, filters, and the active-track highlight when something is playing.
+
+### Universal Player
+
+![Universal corner player with queue controls](docs/screenshots/corner-player-queue.png)
+
+The corner player is shared by recitations, anasheed, lessons, and videos. It includes custom playback controls, seek/trim controls, persistent volume, speed, shuffle, repeat, autoplay, queue count, lock, clear, drag reorder, and per-track delete.
+
+### Controls Documentation
+
+![Controls documentation page](docs/screenshots/docs-controls.png)
+
+The in-app docs page explains the WebUI controls, CLI commands, downloads, cache behavior, server controls, and catalogue sync flow.
+
+### CLI Examples
+
+![CLI examples for search, filtered tracks, and profile lookup](docs/screenshots/cli-examples.png)
+
+The CLI can search people and tracks, page through profile media, filter by kind, collection, riwaya, surah, revelation, and drive playback/download/cache workflows.
+
 ## Start
 
 One-click Windows launchers:
