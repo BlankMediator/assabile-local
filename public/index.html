@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Assabile Local</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="side-home" id="side-home" aria-label="Quick search"></aside>
+      <main class="main">
+        <header class="topbar">
+          <button class="home-icon-button" id="home-button" type="button" title="Home / reload home">&#8962;</button>
+          <div class="brand-title">
+            <strong>Assabile Local</strong>
+            <span>Personal media library</span>
+          </div>
+          <button class="button secondary docs-button" id="docs-button" type="button">Docs</button>
+        </header>
+        <section id="profile" class="profile"></section>
+        <section class="workspace">
+          <div class="tabs" id="tabs"></div>
+          <div id="panel" class="panel"></div>
+        </section>
+      </main>
+    </div>
+
+    <template id="empty-template">
+      <div class="empty">
+        <h2>Select a profile</h2>
+        <p>Browse reciters, munshidin, and preachers from the local catalogue.</p>
+      </div>
+    </template>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
