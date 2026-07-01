@@ -106,6 +106,7 @@ python assabile_cli.py serve
 python assabile_cli.py shell
 python assabile_cli.py gui
 python assabile_cli.py sync
+python assabile_cli.py list mishary
 python assabile_cli.py search sudais --surah Al-Fatiha
 python assabile_cli.py search hafs --kind recitation --riwaya hafs --page 2 --per-page 50
 python assabile_cli.py profile abdul-rahman-al-sudais-12

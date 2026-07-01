@@ -33,6 +33,7 @@ start_cli.bat
 Or:
 
 ```powershell
+python assabile_cli.py list mishary
 python assabile_cli.py search ayman --people
 python assabile_cli.py tracks ayman-swed-345 --kind videoLesson --page 2 --per-page 5
 python assabile_cli.py play ayman-swed-345 --index 1

@@ -6,7 +6,10 @@ import subprocess
 import sys
 import os
 import shlex
+import shutil
 import time
+import urllib.error
+import urllib.request
 import webbrowser
 from pathlib import Path
 
@@ -121,8 +124,13 @@ def cmd_serve(args: argparse.Namespace) -> None:
 
 
 def server_sessions(port: int | None = None) -> list[dict[str, str]]:
+    if not shutil.which("netstat"):
+        return []
     command = ["netstat", "-ano"]
-    output = subprocess.check_output(command, text=True, errors="ignore")
+    try:
+        output = subprocess.check_output(command, text=True, errors="ignore")
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return []
     rows = []
     for line in output.splitlines():
         parts = line.split()
@@ -137,8 +145,16 @@ def server_sessions(port: int | None = None) -> list[dict[str, str]]:
     return rows
 
 
+def server_responds(port: int = DEFAULT_PORT) -> bool:
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/api/people", timeout=0.4) as response:
+            return 200 <= response.status < 500
+    except (OSError, urllib.error.URLError):
+        return False
+
+
 def ensure_server_running(port: int = DEFAULT_PORT) -> None:
-    if server_sessions(port):
+    if server_responds(port) or server_sessions(port):
         return
     creationflags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
     subprocess.Popen(
@@ -149,7 +165,7 @@ def ensure_server_running(port: int = DEFAULT_PORT) -> None:
         creationflags=creationflags,
     )
     for _ in range(20):
-        if server_sessions(port):
+        if server_responds(port) or server_sessions(port):
             return
         time.sleep(0.1)
 
@@ -181,8 +197,6 @@ def cmd_shell(_: argparse.Namespace) -> None:
             if getattr(args, "func", None) is cmd_shell:
                 print("Already in the CLI shell.")
                 continue
-            if getattr(args, "func", None) not in {cmd_serve, cmd_servers, cmd_sync}:
-                ensure_server_running(getattr(args, "port", DEFAULT_PORT) or DEFAULT_PORT)
             args.func(args)
         except SystemExit as exc:
             if exc.code not in (0, None):
@@ -192,10 +206,12 @@ def cmd_shell(_: argparse.Namespace) -> None:
 def cmd_servers(args: argparse.Namespace) -> None:
     sessions = server_sessions(args.port)
     if args.action == "list":
-      for row in sessions:
-          print(f"{row['pid']}\t{row['local']}")
-      print(f"{len(sessions)} server listener(s)")
-      return
+        for row in sessions:
+            print(f"{row['pid']}\t{row['local']}")
+        if not shutil.which("netstat"):
+            print("Listener discovery unavailable: netstat was not found.")
+        print(f"{len(sessions)} server listener(s)")
+        return
     targets = []
     if args.pid:
         targets = [str(args.pid)]
@@ -245,6 +261,11 @@ def cmd_search(args: argparse.Namespace) -> None:
     for row in shown:
         print("\t".join(row))
     print(f"page {page}/{total_pages}; {len(shown)} shown / {len(rows)} matches")
+
+
+def cmd_list(args: argparse.Namespace) -> None:
+    args.people = True
+    cmd_search(args)
 
 
 def cmd_profile(args: argparse.Namespace) -> None:
@@ -383,6 +404,12 @@ def build_parser() -> argparse.ArgumentParser:
     search.add_argument("--page", type=int, default=1)
     search.add_argument("--per-page", type=int, default=80)
     search.set_defaults(func=cmd_search)
+    list_cmd = sub.add_parser("list", help="Alias for people search")
+    list_cmd.add_argument("query", nargs="?", default="")
+    add_track_filter_args(list_cmd, include_person_filters=True)
+    list_cmd.add_argument("--page", type=int, default=1)
+    list_cmd.add_argument("--per-page", type=int, default=80)
+    list_cmd.set_defaults(func=cmd_list)
     profile = sub.add_parser("profile", help="Show profile metadata")
     profile.add_argument("person")
     profile.add_argument("--json", action="store_true")
@@ -419,8 +446,6 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_parser().parse_args()
-    if getattr(args, "func", None) not in {cmd_serve, cmd_servers, cmd_sync, cmd_gui, cmd_shell, cmd_cache, cmd_library}:
-        ensure_server_running(getattr(args, "port", DEFAULT_PORT) or DEFAULT_PORT)
     args.func(args)
 
 

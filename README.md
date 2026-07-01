@@ -6,55 +6,63 @@ Actual audio, video, and full-size photo files are not bulk-downloaded during sy
 
 ## Runtime Screenshots
 
-These screenshots were captured from the local runtime at `http://127.0.0.1:8765`.
+These screenshots were captured from the local runtime at `http://127.0.0.1:8765` in a 1920x1080 desktop viewport and a 390x844 mobile viewport.
 
 ### Home Catalogue
 
-![Home catalogue with category and media filters](docs/screenshots/home-catalogue.png)
+![Desktop home catalogue with category and media filters](docs/screenshots/desktop-home-catalogue.png)
+
+![Mobile home catalogue with category and media filters](docs/screenshots/mobile-home-catalogue.png)
+
+![Mobile home listings after scrolling past filters](docs/screenshots/mobile-home-listings.png)
 
 The home page starts with the full local catalogue, section filters, keyword search, country, surah, riwaya, revelation, content, and sort controls.
 
-### Home Search
+### Ayman Swed Video Lessons
 
-![Home search results for Ayman](docs/screenshots/home-search-ayman.png)
+![Desktop Ayman Swed video lessons](docs/screenshots/desktop-ayman-video-lessons.png)
 
-Search results use the app's native search memory and keep profile actions available, including profile navigation, source opening, selection, and cached image download.
-
-### Profile Media
-
-![Ayman Swed profile with video lessons](docs/screenshots/profile-video-lessons.png)
+![Mobile Ayman Swed video lessons](docs/screenshots/mobile-ayman-video-lessons.png)
 
 Profiles show Assabile biography text, profile imagery, tab counts, comments access, same-country browsing, and native album-style rendering for lessons and recordings.
 
-### Al-Massahef Collections
+### Sudais Collections
 
-![Abdallah Kamel Al-Massahef collections](docs/screenshots/profile-recitations.png)
+![Desktop Sudais Al-Massahef collections](docs/screenshots/desktop-sudais-collections.png)
+
+![Mobile Sudais Al-Massahef collections](docs/screenshots/mobile-sudais-collections.png)
 
 Al-Massahef cards link into collection playback/downloads. Empty collections are visibly disabled while populated collections expose ZIP download actions.
 
-### Recitation List
+### Sudais Recitation List
 
-![Recitation list with playback controls](docs/screenshots/profile-recitation-list.png)
+![Desktop Sudais recitation list with playback controls](docs/screenshots/desktop-sudais-recitations.png)
+
+![Mobile Sudais recitation list with playback controls](docs/screenshots/mobile-sudais-recitations.png)
 
 Recitation rows include play, add-to-queue, cache/download, source open, sorting, filters, and the active-track highlight when something is playing.
 
 ### Universal Player
 
-![Universal corner player with queue controls](docs/screenshots/corner-player-queue.png)
+![Desktop universal corner player with queue controls](docs/screenshots/desktop-corner-player-queue.png)
+
+![Mobile universal corner player with queue controls](docs/screenshots/mobile-corner-player-queue.png)
 
 The corner player is shared by recitations, anasheed, lessons, and videos. It includes custom playback controls, seek/trim controls, persistent volume, speed, shuffle, repeat, autoplay, queue count, lock, clear, drag reorder, and per-track delete.
 
 ### Controls Documentation
 
-![Controls documentation page](docs/screenshots/docs-controls.png)
+![Desktop controls documentation page](docs/screenshots/desktop-docs-controls.png)
+
+![Mobile controls documentation page](docs/screenshots/mobile-docs-controls.png)
 
 The in-app docs page explains the WebUI controls, CLI commands, downloads, cache behavior, server controls, and catalogue sync flow.
 
 ### CLI Examples
 
-![CLI examples for search, filtered tracks, and profile lookup](docs/screenshots/cli-examples.png)
+![CLI examples with placeholder project path](docs/screenshots/cli-examples.png)
 
-The CLI can search people and tracks, page through profile media, filter by kind, collection, riwaya, surah, revelation, and drive playback/download/cache workflows.
+The CLI can search people and tracks, page through profile media, filter by kind, collection, riwaya, surah, revelation, and drive playback/download/cache workflows. CLI screenshots use placeholder paths such as `C:\Users\JohnSmith\Projects\Assabile`.
 
 ## Start
 
@@ -118,6 +126,7 @@ Downloaded media is reused across the CLI and WebUI. If a later catalogue refres
 Common commands:
 
 ```powershell
+python assabile_cli.py list mishary
 python assabile_cli.py search ayman --people
 python assabile_cli.py profile ayman-swed-345
 python assabile_cli.py profile ayman-swed-345 --json

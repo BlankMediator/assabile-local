@@ -1324,7 +1324,19 @@ select {
 }
 
 @media (max-width: 840px) {
+  html,
+  body {
+    min-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .app-shell,
   .app-shell.has-sidebar {
+    display: block;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
     grid-template-columns: minmax(0, 1fr);
   }
 
