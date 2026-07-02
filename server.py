@@ -759,11 +759,14 @@ class Handler(SimpleHTTPRequestHandler):
 
     def send_json(self, payload: Any, status: HTTPStatus = HTTPStatus.OK) -> None:
         body = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError):
+            return
 
     def send_error_json(self, status: HTTPStatus, message: str) -> None:
         self.send_json({"error": message}, status)
@@ -803,16 +806,19 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Content-Length", str(length))
         if status == HTTPStatus.PARTIAL_CONTENT:
             self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
-        self.end_headers()
-        with path.open("rb") as f:
-            f.seek(start)
-            remaining = length
-            while remaining:
-                chunk = f.read(min(1024 * 1024, remaining))
-                if not chunk:
-                    break
-                self.wfile.write(chunk)
-                remaining -= len(chunk)
+        try:
+            self.end_headers()
+            with path.open("rb") as f:
+                f.seek(start)
+                remaining = length
+                while remaining:
+                    chunk = f.read(min(1024 * 1024, remaining))
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+                    remaining -= len(chunk)
+        except (BrokenPipeError, ConnectionResetError):
+            return
 
 
 def main(host: str | None = None, port: int | None = None) -> None:

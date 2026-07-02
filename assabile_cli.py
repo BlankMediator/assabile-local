@@ -124,11 +124,11 @@ def cmd_serve(args: argparse.Namespace) -> None:
 
 
 def server_sessions(port: int | None = None) -> list[dict[str, str]]:
-    if not shutil.which("netstat"):
+    if os.name != "nt" or not shutil.which("netstat"):
         return []
     command = ["netstat", "-ano"]
     try:
-        output = subprocess.check_output(command, text=True, errors="ignore")
+        output = subprocess.check_output(command, text=True, errors="ignore", stderr=subprocess.DEVNULL)
     except (FileNotFoundError, subprocess.SubprocessError):
         return []
     rows = []
@@ -208,8 +208,8 @@ def cmd_servers(args: argparse.Namespace) -> None:
     if args.action == "list":
         for row in sessions:
             print(f"{row['pid']}\t{row['local']}")
-        if not shutil.which("netstat"):
-            print("Listener discovery unavailable: netstat was not found.")
+        if os.name != "nt" or not shutil.which("netstat"):
+            print("Listener discovery unavailable on this platform.")
         print(f"{len(sessions)} server listener(s)")
         return
     targets = []

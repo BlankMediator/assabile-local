@@ -127,12 +127,15 @@ python assabile_cli.py servers stop --all
 
 CLI profile and playback flow:
 
+- `list <term>`: alias for people search, useful for quickly finding profile ids.
 - `search <term> --people`: find a profile id.
 - `profile <profile-id>`: show counts; add `--json` for full metadata.
 - `tracks <profile-id>`: list playable recitations, tracks, and videos with stable indexes.
 - `tracks <profile-id> --page 2 --per-page 80`: page through long track lists.
 - `play <profile-id> --index <n>`: cache and open that item locally.
 - `play <profile-id> <title words> --first`: play the first matching title.
+
+Catalogue commands such as `list`, `search`, `profile`, and `tracks` read `data/catalog.json` directly and do not require server listener discovery.
 
 Filter flags for `search`, `tracks`, and `play`:
 
@@ -169,3 +172,5 @@ python assabile_cli.py servers stop --all
 python assabile_cli.py servers stop --all-other
 python assabile_cli.py serve --host 127.0.0.1 --port 9000
 ```
+
+On Android/Pydroid, server listener discovery may be unavailable. In that case `servers list` reports that limitation, but catalogue commands still work.
