@@ -68,8 +68,66 @@ def text_match(value: str, needle: str) -> bool:
     return needle.lower() in str(value or "").lower()
 
 
+def query_text(value: object) -> str:
+    if isinstance(value, list):
+        return " ".join(str(item) for item in value)
+    return str(value or "")
+
+
+def query_terms(value: object) -> list[str]:
+    return [term for term in query_text(value).lower().split() if term]
+
+
+def all_terms_match(haystack: object, terms: list[str]) -> bool:
+    text = str(haystack or "").lower()
+    return all(term in text for term in terms)
+
+
+def person_numeric_id(person: dict) -> str:
+    return str(person.get("id", "")).rsplit("-", 1)[-1]
+
+
+def person_search_haystack(person: dict) -> str:
+    return " ".join(
+        [
+            person.get("id", ""),
+            person_numeric_id(person),
+            person.get("name", ""),
+            person.get("arabicName", ""),
+            person.get("country", ""),
+            " ".join(person.get("roles", [])),
+            " ".join(person.get("riwayat", [])),
+            " ".join(person.get("revelations", [])),
+            " ".join(person.get("surahs", [])),
+        ]
+    )
+
+
+def person_matches_terms(person: dict, terms: list[str]) -> bool:
+    if not terms:
+        return True
+    identity = person_search_haystack(person)
+    if all_terms_match(identity, terms):
+        return True
+    for track in iter_tracks(person):
+        haystack = " ".join(
+            [
+                identity,
+                str(track.get("title", "")),
+                str(track.get("album", "")),
+                str(track.get("collection", "")),
+                str(track.get("riwayah", "")),
+                str(track.get("revelation", "")),
+                str(track.get("kind", "")),
+            ]
+        )
+        if all_terms_match(haystack, terms):
+            return True
+    return False
+
+
 def filter_tracks(rows: list[dict], args: argparse.Namespace, include_query: bool = True) -> list[dict]:
-    query = str(getattr(args, "query", "") or "").lower()
+    terms = query_terms(getattr(args, "query", ""))
     filtered = []
     for row in rows:
         if getattr(args, "kind", "all") != "all" and row.get("kind") != args.kind:
@@ -88,9 +146,9 @@ def filter_tracks(rows: list[dict], args: argparse.Namespace, include_query: boo
             continue
         if getattr(args, "revelation", "") and not text_match(row.get("revelation"), args.revelation):
             continue
-        if include_query and query:
+        if include_query and terms:
             haystack = " ".join(str(row.get(key, "")) for key in ("title", "album", "collection", "personName", "riwayah", "revelation", "kind"))
-            if query not in haystack.lower():
+            if not all_terms_match(haystack, terms):
                 continue
         filtered.append(row)
     return filtered
@@ -153,12 +211,20 @@ def server_responds(port: int = DEFAULT_PORT) -> bool:
         return False
 
 
-def ensure_server_running(port: int = DEFAULT_PORT) -> None:
+def ensure_server_running(port: int = DEFAULT_PORT, host: str | None = None) -> None:
     if server_responds(port) or server_sessions(port):
         return
     creationflags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
+    bind_host = host or os.environ.get("ASSABILE_HOST", "0.0.0.0")
     subprocess.Popen(
-        [sys.executable, str(Path(__file__).resolve().parent / "server.py")],
+        [
+            sys.executable,
+            str(Path(__file__).resolve().parent / "server.py"),
+            "--host",
+            bind_host,
+            "--port",
+            str(port),
+        ],
         cwd=Path(__file__).resolve().parent,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -171,7 +237,7 @@ def ensure_server_running(port: int = DEFAULT_PORT) -> None:
 
 
 def cmd_gui(args: argparse.Namespace) -> None:
-    ensure_server_running(args.port)
+    ensure_server_running(args.port, args.host)
     webbrowser.open(f"http://127.0.0.1:{args.port}")
 
 
@@ -234,7 +300,7 @@ def cmd_sync(args: argparse.Namespace) -> None:
 
 
 def cmd_search(args: argparse.Namespace) -> None:
-    term = (args.query or "").lower()
+    terms = query_terms(args.query)
     rows = []
     media_filter_active = any(
         [
@@ -249,9 +315,9 @@ def cmd_search(args: argparse.Namespace) -> None:
     for person in load_people():
         if args.country and not text_match(person.get("country", ""), args.country):
             continue
-        person_match = term and term in " ".join([person.get("name", ""), person.get("arabicName", ""), person.get("country", "")]).lower()
+        person_match = bool(terms) and person_matches_terms(person, terms)
         if args.people or (person_match and not media_filter_active):
-            if person_match or not term:
+            if person_match or not terms:
                 rows.append(("person", person["id"], person["name"], person.get("country", "")))
         if args.people:
             continue
@@ -269,10 +335,7 @@ def cmd_list(args: argparse.Namespace) -> None:
 
 
 def cmd_profile(args: argparse.Namespace) -> None:
-    people = {p["id"]: p for p in load_people()}
-    person = people.get(args.person)
-    if not person:
-        raise SystemExit(f"Profile not found: {args.person}")
+    person = get_person(args.person)
     print(json.dumps(person if args.json else {
         "id": person["id"],
         "name": person["name"],
@@ -290,11 +353,21 @@ def cmd_profile(args: argparse.Namespace) -> None:
 
 
 def get_person(person_id: str) -> dict:
-    people = {p["id"]: p for p in load_people()}
-    person = people.get(person_id)
-    if not person:
-        raise SystemExit(f"Profile not found: {person_id}")
-    return person
+    needle = str(person_id or "").strip().lower()
+    people = load_people()
+    for person in people:
+        if person.get("id", "").lower() == needle:
+            return person
+    for person in people:
+        if person_numeric_id(person) == needle:
+            return person
+    matches = [person for person in people if needle and needle in person.get("id", "").lower()]
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        options = ", ".join(person["id"] for person in matches[:10])
+        raise SystemExit(f"Profile id is ambiguous: {person_id}. Matches: {options}")
+    raise SystemExit(f"Profile not found: {person_id}")
 
 
 def select_track(person: dict, args: argparse.Namespace) -> dict:
@@ -304,8 +377,8 @@ def select_track(person: dict, args: argparse.Namespace) -> dict:
             if track.get("index") == args.index:
                 return track
         raise SystemExit(f"Track index not found: {args.index}")
-    term = (args.query or "").lower()
-    matches = filter_tracks(tracks, args) if term else tracks
+    terms = query_terms(args.query)
+    matches = filter_tracks(tracks, args) if terms else tracks
     if not matches:
         raise SystemExit("No matching track found.")
     if len(matches) > 1 and not args.first:
@@ -382,6 +455,7 @@ def build_parser() -> argparse.ArgumentParser:
     serve.add_argument("--port", type=int, default=None, help="Bind port, default ASSABILE_PORT or 8765")
     serve.set_defaults(func=cmd_serve)
     gui = sub.add_parser("gui", help="Start the server if needed and open the web UI")
+    gui.add_argument("--host", default=None, help="Bind host when starting a new server, default ASSABILE_HOST or 0.0.0.0")
     gui.add_argument("--port", type=int, default=DEFAULT_PORT)
     gui.set_defaults(func=cmd_gui)
     shell = sub.add_parser("shell", help="Start the server if needed and open an interactive CLI")
@@ -398,14 +472,14 @@ def build_parser() -> argparse.ArgumentParser:
     sync.add_argument("--max-profiles", type=int)
     sync.set_defaults(func=cmd_sync)
     search = sub.add_parser("search", help="Search profiles and tracks")
-    search.add_argument("query", nargs="?", default="")
+    search.add_argument("query", nargs="*", default=[])
     add_track_filter_args(search, include_person_filters=True)
     search.add_argument("--people", action="store_true")
     search.add_argument("--page", type=int, default=1)
     search.add_argument("--per-page", type=int, default=80)
     search.set_defaults(func=cmd_search)
     list_cmd = sub.add_parser("list", help="Alias for people search")
-    list_cmd.add_argument("query", nargs="?", default="")
+    list_cmd.add_argument("query", nargs="*", default=[])
     add_track_filter_args(list_cmd, include_person_filters=True)
     list_cmd.add_argument("--page", type=int, default=1)
     list_cmd.add_argument("--per-page", type=int, default=80)
@@ -416,14 +490,14 @@ def build_parser() -> argparse.ArgumentParser:
     profile.set_defaults(func=cmd_profile)
     tracks = sub.add_parser("tracks", help="List playable tracks/videos for a profile")
     tracks.add_argument("person")
-    tracks.add_argument("query", nargs="?", default="", help="Optional title/filter text")
+    tracks.add_argument("query", nargs="*", default=[], help="Optional title/filter text")
     add_track_filter_args(tracks)
     tracks.add_argument("--page", type=int, default=1)
     tracks.add_argument("--per-page", type=int, default=80)
     tracks.set_defaults(func=cmd_tracks)
     play = sub.add_parser("play", help="Cache and open a profile track/video")
     play.add_argument("person")
-    play.add_argument("query", nargs="?", default="", help="Title search; omit when using --index")
+    play.add_argument("query", nargs="*", default=[], help="Title search; omit when using --index")
     add_track_filter_args(play)
     play.add_argument("--index", type=int, default=0, help="Track index from the tracks command")
     play.add_argument("--first", action="store_true", help="Play the first query match when there are multiple matches")

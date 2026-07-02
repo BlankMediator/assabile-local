@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import argparse
 import html
 import json
 import mimetypes
 import os
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import threading
@@ -146,6 +148,32 @@ SURAH_NAMES = {
     113: "Al-Falaq",
     114: "An-Nas",
 }
+
+
+def local_access_urls(host: str, port: int) -> list[str]:
+    hosts: list[str] = []
+    if host in {"0.0.0.0", "::", ""}:
+        hosts.append("127.0.0.1")
+        try:
+            name = socket.gethostname()
+            for _, _, _, _, sockaddr in socket.getaddrinfo(name, None, socket.AF_INET):
+                candidate = sockaddr[0]
+                if candidate and not candidate.startswith("127.") and candidate not in hosts:
+                    hosts.append(candidate)
+        except OSError:
+            pass
+        try:
+            probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            probe.connect(("8.8.8.8", 80))
+            candidate = probe.getsockname()[0]
+            probe.close()
+            if candidate and not candidate.startswith("127.") and candidate not in hosts:
+                hosts.append(candidate)
+        except OSError:
+            pass
+    else:
+        hosts.append(host)
+    return [f"http://{item}:{port}" for item in hosts]
 SURAH_ORDER = {name: number for number, name in SURAH_NAMES.items()}
 CANONICAL_SURAHS = set(SURAH_ORDER)
 
@@ -826,7 +854,10 @@ def main(host: str | None = None, port: int | None = None) -> None:
     host = host or os.environ.get("ASSABILE_HOST", "0.0.0.0")
     port = int(port or os.environ.get("ASSABILE_PORT", "8765"))
     server = ThreadingHTTPServer((host, port), Handler)
-    print(f"Assabile Local running at http://{host}:{port}")
+    print(f"Assabile Local listening on {host}:{port}")
+    print("Open locally or from another device on the same LAN:")
+    for url in local_access_urls(host, port):
+        print(f"  {url}")
     print("Downloads will be saved under data/downloads/")
     print("Server prompt: type 'gui', 'cli', 'help', or 'stop'.")
     if not sys.stdin.isatty():
@@ -862,4 +893,8 @@ def main(host: str | None = None, port: int | None = None) -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Run the Assabile Local web server.")
+    parser.add_argument("--host", default=None, help="Bind host, default ASSABILE_HOST or 0.0.0.0 for LAN access.")
+    parser.add_argument("--port", type=int, default=None, help="Bind port, default ASSABILE_PORT or 8765.")
+    args = parser.parse_args()
+    main(args.host, args.port)

@@ -35,7 +35,11 @@ Or:
 ```powershell
 python assabile_cli.py list mishary
 python assabile_cli.py search ayman --people
+python assabile_cli.py search sudais hafs --people
+python assabile_cli.py search idriss fatiha hafs
+python assabile_cli.py profile 38
 python assabile_cli.py tracks ayman-swed-345 --kind videoLesson --page 2 --per-page 5
+python assabile_cli.py tracks 38 fatiha hafs
 python assabile_cli.py play ayman-swed-345 --index 1
 ```
 
@@ -65,10 +69,10 @@ start_webui.bat
 Or:
 
 ```powershell
-python server.py
+python server.py --host 0.0.0.0 --port 8765
 ```
 
-Then open `http://127.0.0.1:8765`.
+Then open `http://127.0.0.1:8765` on the same machine, or the printed `http://192.168.x.x:8765` style URL from another device on the same LAN.
 
 ## Full Bundle
 

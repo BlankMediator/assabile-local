@@ -122,6 +122,51 @@ function rememberSearchTerm(term) {
   localStorage.setItem(SEARCH_MEMORY_KEY, JSON.stringify(next));
 }
 
+function queryTerms(term) {
+  return String(term || "")
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function allTermsMatch(haystack, terms) {
+  const text = String(haystack || "").toLowerCase();
+  return terms.every((term) => text.includes(term));
+}
+
+function profileShortId(person) {
+  return String(person?.id || "").split("-").pop() || "";
+}
+
+function personSearchHaystack(person) {
+  return [
+    person.id,
+    profileShortId(person),
+    person.name,
+    person.arabicName,
+    person.country,
+    ...(person.roles || []),
+    ...(person.riwayat || []),
+    ...(person.revelations || []),
+    ...(person.surahs || []),
+  ].join(" ");
+}
+
+function trackSearchHaystack(track) {
+  return [track.title, track.subtitle, track.personId, track.personName, track.riwayah, track.revelation, track.kind].join(" ");
+}
+
+function personMatchesHomeTerms(person, terms) {
+  if (!terms.length) return true;
+  const identity = personSearchHaystack(person);
+  if (allTermsMatch(identity, terms)) return true;
+  return state.homeTracks.some((track) => {
+    if (track.personId !== person.id) return false;
+    return allTermsMatch(`${identity} ${trackSearchHaystack(track)}`, terms);
+  });
+}
+
 function snippet(value, limit = 150) {
   const text = String(value || "").replace(/\s+/g, " ").trim();
   return text.length > limit ? `${text.slice(0, limit - 1).trim()}...` : text;
@@ -193,7 +238,7 @@ function personCount(person, key) {
 }
 
 function categoryPeople(category = state.home.category, term = state.home.term) {
-  const query = term.trim().toLowerCase();
+  const terms = queryTerms(term);
   const applyQuranFilters = homeUsesQuranFilters(category);
   const contentFilter = state.home.content;
   const people = state.people.filter((person) => {
@@ -215,11 +260,7 @@ function categoryPeople(category = state.home.category, term = state.home.term) 
     if (applyQuranFilters && state.home.revelation !== "all" && !revelations.some((revelation) => revelation.toLowerCase() === state.home.revelation)) return false;
     if (applyQuranFilters && state.home.riwayah !== "all" && !riwayat.some((riwayah) => matchesRiwayah(riwayah))) return false;
     if (applyQuranFilters && state.home.surah !== "all" && !surahs.includes(state.home.surah)) return false;
-    if (!query) return true;
-    return [person.name, person.arabicName, person.country, ...(person.roles || [])]
-      .join(" ")
-      .toLowerCase()
-      .includes(query);
+    return personMatchesHomeTerms(person, terms);
   });
   return sortHomePeople(people);
 }
@@ -259,9 +300,9 @@ function renderHome() {
   const riwayat = uniqueCanonicalRiwayat(state.homeFilters.riwayat || []);
   const surahs = state.homeFilters.surahs || [];
   const searchMemory = readSearchMemory().filter((item) => item.toLowerCase().includes(state.home.term.trim().toLowerCase())).slice(0, 8);
-  const trackTerm = state.home.term.trim().toLowerCase();
+  const trackTerms = queryTerms(state.home.term);
   const quranFiltersVisible = homeUsesQuranFilters();
-  const showTrackMatches = Boolean(trackTerm || (quranFiltersVisible && (state.home.riwayah !== "all" || state.home.revelation !== "all" || state.home.surah !== "all")));
+  const showTrackMatches = Boolean(trackTerms.length || (quranFiltersVisible && (state.home.riwayah !== "all" || state.home.revelation !== "all" || state.home.surah !== "all")));
   const tracks = showTrackMatches
     ? state.homeTracks.filter((track) => {
         if (state.home.category !== "all" && state.home.category !== "quran" && track.kind === "recitation") return false;
@@ -274,8 +315,8 @@ function renderHome() {
         if (quranFiltersVisible && state.home.revelation !== "all" && (track.revelation || "").toLowerCase() !== state.home.revelation) return false;
         if (quranFiltersVisible && state.home.riwayah !== "all" && !matchesRiwayah(track.riwayah)) return false;
         if (quranFiltersVisible && state.home.surah !== "all" && track.title !== state.home.surah) return false;
-        if (!trackTerm) return true;
-        return [track.title, track.subtitle, track.personName, track.riwayah, track.revelation, track.kind].join(" ").toLowerCase().includes(trackTerm);
+        if (!trackTerms.length) return true;
+        return allTermsMatch(trackSearchHaystack(track), trackTerms);
       })
     : [];
   const renderedTracks = tracks.slice(0, 240);
@@ -1724,7 +1765,6 @@ function renderRecordingPlayer(recording) {
         <strong>${escapeHtml(recording.title || "Recording")}</strong>
         <span>${escapeHtml(recording.creator || "")}</span>
       </div>
-      <button class="icon-button player-header-resize" data-player-resize="nw" title="Resize player">&#8690;</button>
       <button class="icon-button" data-recording-collapse title="Collapse player">${state.recordingPlayer.collapsed ? "&#9650;" : "&#9660;"}</button>
       <button class="icon-button player-close-button" data-recording-close title="${state.recordingPlayer.queueLocked ? "Unlock queue before closing" : "Close player and clear queue"}" ${state.recordingPlayer.queueLocked ? "disabled" : ""}>&times;</button>
     </div>
@@ -2193,31 +2233,40 @@ function bindPlayerResize(shell) {
     handle.addEventListener("pointerdown", (event) => {
       if (state.recordingPlayer.collapsed || state.recordingPlayer.videoFullsize) return;
       event.preventDefault();
-      handle.setPointerCapture(event.pointerId);
+      document.body.classList.add("player-resizing");
+      if (handle.setPointerCapture) handle.setPointerCapture(event.pointerId);
       const startX = event.clientX;
       const startY = event.clientY;
       const startWidth = shell.getBoundingClientRect().width;
       const startHeight = shell.getBoundingClientRect().height;
       const direction = handle.dataset.playerResize || "nw";
       const move = (moveEvent) => {
-        const minWidth = Math.min(460, Math.max(320, window.innerWidth - 24));
-        const minHeight = Math.min(430, Math.max(320, window.innerHeight - 24));
-        const deltaX = direction === "se" ? moveEvent.clientX - startX : startX - moveEvent.clientX;
-        const deltaY = direction === "se" ? moveEvent.clientY - startY : startY - moveEvent.clientY;
-        const nextWidth = Math.max(minWidth, Math.min(window.innerWidth - 24, startWidth + deltaX));
-        const nextHeight = Math.max(minHeight, Math.min(window.innerHeight - 24, startHeight + deltaY));
+        moveEvent.preventDefault();
+        const viewportWidth = window.visualViewport?.width || window.innerWidth;
+        const viewportHeight = window.visualViewport?.height || window.innerHeight;
+        const margin = window.matchMedia("(max-width: 720px)").matches ? 16 : 36;
+        const minWidth = Math.min(460, Math.max(320, viewportWidth - margin));
+        const minHeight = Math.min(430, Math.max(320, viewportHeight - margin));
+        const maxWidth = Math.max(minWidth, viewportWidth - margin);
+        const maxHeight = Math.max(minHeight, viewportHeight - margin);
+        const fixedCornerDirection = direction === "se" && getComputedStyle(shell).position === "fixed";
+        const deltaX = direction === "se" && !fixedCornerDirection ? moveEvent.clientX - startX : startX - moveEvent.clientX;
+        const deltaY = direction === "se" && !fixedCornerDirection ? moveEvent.clientY - startY : startY - moveEvent.clientY;
+        const nextWidth = Math.max(minWidth, Math.min(maxWidth, startWidth + deltaX));
+        const nextHeight = Math.max(minHeight, Math.min(maxHeight, startHeight + deltaY));
         shell.style.width = `${nextWidth}px`;
         shell.style.height = `${nextHeight}px`;
         state.recordingPlayer.savedSize = { width: nextWidth, height: nextHeight };
       };
       const up = () => {
-        handle.removeEventListener("pointermove", move);
-        handle.removeEventListener("pointerup", up);
-        handle.removeEventListener("pointercancel", up);
+        document.body.classList.remove("player-resizing");
+        window.removeEventListener("pointermove", move);
+        window.removeEventListener("pointerup", up);
+        window.removeEventListener("pointercancel", up);
       };
-      handle.addEventListener("pointermove", move);
-      handle.addEventListener("pointerup", up);
-      handle.addEventListener("pointercancel", up);
+      window.addEventListener("pointermove", move, { passive: false });
+      window.addEventListener("pointerup", up, { once: true });
+      window.addEventListener("pointercancel", up, { once: true });
     });
   });
 }

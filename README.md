@@ -85,14 +85,27 @@ Direct commands:
 
 ```powershell
 python server.py
+python server.py --host 0.0.0.0 --port 8765
 python assabile_cli.py shell
 python assabile_cli.py gui
 ```
 
-The default web UI is:
+The server prints the available URLs. Use localhost on the same computer, or the printed LAN URL from another device:
 
 ```text
 http://127.0.0.1:8765
+http://192.168.x.x:8765
+```
+
+If the LAN URL is refused, check that the server is still running, the other device is on the same Wi-Fi/LAN, the server was started with `--host 0.0.0.0`, and Windows Firewall allows Python on that port.
+
+The printed URLs can include several network interfaces. `127.0.0.1` is only for the same computer. A `192.168.x.x` address is usually the normal home LAN address to use from a phone. `172.x` addresses are often virtual adapters such as WSL, Docker, or Hyper-V. `100.64.x.x` through `100.127.x.x` addresses are usually VPN/mesh/CGNAT interfaces and only work from devices on that same network.
+
+If the page opens over LAN but playback fails with a refused-connection error, stop stale server listeners and start one clean LAN-bound server:
+
+```powershell
+python assabile_cli.py servers stop --all --port 8765
+python server.py --host 0.0.0.0 --port 8765
 ```
 
 When `server.py` is running in a terminal, type `gui`, `cli`, `help`, or `stop` at the `assabile>` prompt.
@@ -128,8 +141,13 @@ Common commands:
 ```powershell
 python assabile_cli.py list mishary
 python assabile_cli.py search ayman --people
+python assabile_cli.py search sudais hafs --people
+python assabile_cli.py search idriss fatiha hafs
+python assabile_cli.py search abdulbasit fatiha warsh
+python assabile_cli.py profile 38
 python assabile_cli.py profile ayman-swed-345
 python assabile_cli.py profile ayman-swed-345 --json
+python assabile_cli.py tracks 38 fatiha hafs
 python assabile_cli.py tracks ayman-swed-345 --kind videoLesson --page 2 --per-page 5
 python assabile_cli.py tracks abdallah-kamel-318 --kind recitation --riwaya hafs --surah Fatiha
 python assabile_cli.py play ayman-swed-345 --index 1
@@ -150,12 +168,14 @@ Track filters work on `search`, `tracks`, and `play`:
 
 Pagination flags `--page` and `--per-page` work on `search` and `tracks`.
 
+Search accepts multiple unquoted words. Each word can match a different relevant field, such as reciter name, profile id, surah, riwaya, country, title, collection, or media kind. Profile commands accept either the full slug, such as `abdul-bari-ath-thobaity-38`, or the numeric profile id, such as `38`.
+
 Server management:
 
 ```powershell
 python assabile_cli.py servers list
 python assabile_cli.py servers stop --all
-python assabile_cli.py serve --host 127.0.0.1 --port 9000
+python assabile_cli.py serve --host 0.0.0.0 --port 9000
 ```
 
 ## Web UI
@@ -180,7 +200,7 @@ The custom player supports:
 - Queue with count, drag reorder, row delete, clear, and lock/unlock.
 - Shuffle, repeat off/1/2/3, autoplay, persistent volume, typed volume percentage, and playback speed.
 - Temporary trim start/end by handles or exact time entry.
-- Resizable corner window, collapse/restore, and fullsize video mode that restores the previous player size.
+- Resizable corner window using the corner grips, collapse/restore, and fullsize video mode that restores the previous player size.
 
 ## Local Media Cache
 

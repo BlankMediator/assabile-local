@@ -556,24 +556,27 @@ def extract_photo_pages(text: str, person_id: str) -> list[str]:
 
 def extract_ajax_collections(text: str) -> list[dict[str, str]]:
     collections = []
+    all_collections = []
     seen = set()
     for link in extract_links(text):
         if "/ajax/loadplayer-" in link["path"] and link["text"]:
             label = link["text"]
-            if label.lower() == "all" or label in seen:
+            collection_id = link["path"].rstrip("/").split("-")[-1]
+            item = {
+                "id": collection_id,
+                "title": label,
+                "riwayah": "",
+                "category": "",
+                "ajax": absolute_url(link["path"]),
+            }
+            if label.lower() == "all":
+                all_collections.append(item)
+                continue
+            if label in seen:
                 continue
             seen.add(label)
-            collection_id = link["path"].rstrip("/").split("-")[-1]
-            collections.append(
-                {
-                    "id": collection_id,
-                    "title": label,
-                    "riwayah": "",
-                    "category": "",
-                    "ajax": absolute_url(link["path"]),
-                }
-            )
-    return collections
+            collections.append(item)
+    return collections or all_collections
 
 
 def extract_collection_headings(text: str) -> list[dict[str, str]]:
@@ -683,8 +686,15 @@ def crawl_person(profile_path: str, roles: set[str], delay: float, refresh: bool
         "videos": [],
     }
 
-    if person["tabs"].get("collections"):
+    if person["tabs"].get("collections") or person["tabs"].get("recitations"):
         person["collections"] = extract_ajax_collections(text)
+
+    if person["tabs"].get("recitations"):
+        quran_path = f"/{person_id}/quran"
+        for _, quran_text in fetch_text_variants(quran_path, delay=delay, refresh=refresh):
+            person["collections"] = merge_unique(person["collections"], extract_ajax_collections(quran_text), key="id")
+
+    if person["tabs"].get("collections"):
         collection_path = f"/{person_id}/collection"
         for _, collection_text in fetch_text_variants(collection_path, delay=delay, refresh=refresh):
             person["collections"] = merge_unique(person["collections"], extract_ajax_collections(collection_text), key="id")

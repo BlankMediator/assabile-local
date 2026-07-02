@@ -749,12 +749,13 @@ select {
 .recording-player-shell {
   position: relative;
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 10px;
   border: 1px solid var(--accent);
   border-radius: 8px;
   background: var(--accent-soft);
   padding: 12px;
-  overflow: auto;
+  overflow: hidden;
   min-width: min(460px, calc(100vw - 36px));
   min-height: min(430px, calc(100vh - 36px));
   max-width: calc(100vw - 36px);
@@ -770,6 +771,20 @@ select {
   border-top: 2px solid var(--accent);
   cursor: nwse-resize;
   opacity: 0.8;
+  touch-action: none;
+  user-select: none;
+}
+
+.player-resize-grip::after {
+  content: "";
+  position: absolute;
+  inset: -12px;
+}
+
+.player-resizing,
+.player-resizing * {
+  cursor: nwse-resize !important;
+  user-select: none !important;
 }
 
 .player-resize-grip-nw {
@@ -797,16 +812,12 @@ select {
   top: 0;
   z-index: 4;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 10px;
   align-items: start;
-  margin: -12px -12px 0;
-  padding: 12px;
+  margin: 0;
+  padding: 0 2px 2px;
   background: var(--accent-soft);
-}
-
-.player-header-resize {
-  cursor: nwse-resize;
 }
 
 .player-close-button {
@@ -848,8 +859,16 @@ select {
 
 .recording-player-body {
   display: grid;
+  grid-template-rows: auto auto auto auto auto minmax(0, 1fr);
   gap: 10px;
   min-height: 0;
+  overflow: hidden;
+}
+
+.recording-player-body:has(.recording-playlist.collapsed) {
+  grid-template-rows: auto auto auto auto auto auto;
+  align-content: start;
+  overflow-y: auto;
 }
 
 .recording-player-shell.collapsed {
@@ -1019,9 +1038,11 @@ select {
 
 .recording-playlist {
   display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
   gap: 8px;
   border-top: 1px solid var(--line);
   padding-top: 10px;
+  min-height: 0;
 }
 
 .playlist-toggle {
@@ -1076,9 +1097,10 @@ select {
   display: grid;
   gap: 6px;
   min-height: 52px;
-  max-height: 220px;
+  max-height: none;
   overflow-y: auto;
   padding-right: 4px;
+  align-content: start;
 }
 
 .recording-playlist.collapsed .playlist-list {
@@ -1412,8 +1434,23 @@ select {
   }
 
   .player-resize-grip {
-    width: 34px;
-    height: 34px;
+    width: 48px;
+    height: 48px;
+    border-width: 3px;
+  }
+
+  .player-resize-grip::after {
+    inset: -16px;
+  }
+
+  .player-resize-grip-nw {
+    top: 8px;
+    left: 8px;
+  }
+
+  .player-resize-grip-se {
+    right: 8px;
+    bottom: 8px;
   }
 
   .playlist-row {
